@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Madeira Fuel Prices",
+        "description": "Adds the weekly maximum fuel prices for Madeira, as published in JORAM, the region's official journal. There is nothing to set."
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not read the price feed. Please try again."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "petrol_95": { "name": "Petrol 95" },
+      "diesel": { "name": "Diesel" },
+      "coloured_diesel": { "name": "Coloured diesel" },
+      "next_petrol_95": { "name": "Next petrol 95" },
+      "next_diesel": { "name": "Next diesel" },
+      "next_coloured_diesel": { "name": "Next coloured diesel" },
+      "valid_from": { "name": "Valid from" },
+      "next_valid_from": { "name": "Next valid from" },
+      "updated_at": { "name": "Data updated" },
+      "warnings": { "name": "Warnings" }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "entity": {
+    "sensor": {
+      "petrol_95": { "default": "mdi:gas-station" },
+      "diesel": { "default": "mdi:gas-station" },
+      "coloured_diesel": { "default": "mdi:tractor" },
+      "next_petrol_95": { "default": "mdi:gas-station-outline" },
+      "next_diesel": { "default": "mdi:gas-station-outline" },
+      "next_coloured_diesel": { "default": "mdi:tractor" },
+      "valid_from": { "default": "mdi:calendar-check" },
+      "next_valid_from": { "default": "mdi:calendar-arrow-right" },
+      "updated_at": { "default": "mdi:update" },
+      "warnings": { "default": "mdi:alert-outline" }
+    }
+  }
+}

@@ -1,0 +1,55 @@
+name: Release
+
+# Automatic tag trigger is disabled while the repository is private, since the
+# HACS validation gate requires public raw file access and would fail (and
+# waste runner minutes). Re-enable the tag trigger below once the repo is made
+# public.
+on:
+  workflow_dispatch:
+  # push:
+  #   tags:
+  #     - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: brands
+
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    needs: [hassfest, hacs]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches manifest version
+        run: |
+          MANIFEST_VERSION="$(jq -r '.version' custom_components/madeira_fuel_prices/manifest.json)"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Manifest version: ${MANIFEST_VERSION}"
+          echo "Tag version:      ${TAG_VERSION} (from tag ${GITHUB_REF_NAME})"
+          if [ "${MANIFEST_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "::error::Tag '${GITHUB_REF_NAME}' does not match manifest.json version '${MANIFEST_VERSION}'."
+            exit 1
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

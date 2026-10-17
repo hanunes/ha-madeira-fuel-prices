@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Preços dos Combustíveis na Madeira",
+        "description": "Adiciona os preços máximos semanais dos combustíveis na Madeira, tal como publicados no JORAM, o jornal oficial da Região. Não há nada a configurar."
+      }
+    },
+    "error": {
+      "cannot_connect": "Não foi possível ler os preços. Tente novamente."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "petrol_95": { "name": "Gasolina 95" },
+      "diesel": { "name": "Gasóleo rodoviário" },
+      "coloured_diesel": { "name": "Gasóleo colorido" },
+      "next_petrol_95": { "name": "Próxima gasolina 95" },
+      "next_diesel": { "name": "Próximo gasóleo rodoviário" },
+      "next_coloured_diesel": { "name": "Próximo gasóleo colorido" },
+      "valid_from": { "name": "Em vigor desde" },
+      "next_valid_from": { "name": "Próximos preços a partir de" },
+      "updated_at": { "name": "Dados atualizados" },
+      "warnings": { "name": "Avisos" }
+    }
+  }
+}

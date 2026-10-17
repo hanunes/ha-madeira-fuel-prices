@@ -1,0 +1,35 @@
+name: Validate
+
+# Automatic triggers are disabled while the repository is private, since HACS
+# validation requires public raw file access and would fail (and waste runner
+# minutes). Re-enable the push/pull_request triggers below once the repo is
+# made public.
+on:
+  workflow_dispatch:
+  # push:
+  # pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: brands
