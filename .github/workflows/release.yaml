@@ -1,14 +1,9 @@
 name: Release
 
-# Automatic tag trigger is disabled while the repository is private, since the
-# HACS validation gate requires public raw file access and would fail (and
-# waste runner minutes). Re-enable the tag trigger below once the repo is made
-# public.
 on:
-  workflow_dispatch:
-  # push:
-  #   tags:
-  #     - "v*"
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
 
 permissions:
   contents: write
@@ -41,7 +36,7 @@ jobs:
       - name: Verify tag matches manifest version
         run: |
           MANIFEST_VERSION="$(jq -r '.version' custom_components/madeira_fuel_prices/manifest.json)"
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${GITHUB_REF_NAME}"
           echo "Manifest version: ${MANIFEST_VERSION}"
           echo "Tag version:      ${TAG_VERSION} (from tag ${GITHUB_REF_NAME})"
           if [ "${MANIFEST_VERSION}" != "${TAG_VERSION}" ]; then
