@@ -2,9 +2,10 @@ blueprint:
   name: "Madeira fuel prices: notify"
   description: >-
     Sends a notification when a new weekly order of maximum fuel prices is
-    published in JORAM (usually on Friday or Saturday), optionally when the new
-    prices take effect (Monday at 0:00), and once a day while the price data has
-    a problem (a warning from the feed, or no update for more than 8 days).
+    published in JORAM (usually on Friday or Saturday), optionally a reminder to
+    fill up before the new prices take effect, optionally when they take effect
+    (Monday at 0:00), and once a day while the price data has a problem (a
+    warning from the feed, or no update for more than 8 days).
 
 
     Messages show each selected fuel's price and its change against the prices
@@ -78,6 +79,34 @@ blueprint:
         skip_unchanged:
           name: Skip unchanged weeks
           description: No message for a new order whose selected prices are all unchanged.
+          default: true
+          selector:
+            boolean: {}
+        notify_reminder:
+          name: Fill-up reminder
+          description: >-
+            A reminder before the new prices take effect, so there is time to
+            fill up at the old prices.
+          default: false
+          selector:
+            boolean: {}
+        reminder_days:
+          name: Days before the change
+          description: 1 is the day before (Sunday for a Monday change), 2 the day before that.
+          default: 1
+          selector:
+            number:
+              min: 1
+              max: 3
+              mode: box
+        reminder_time:
+          name: Time of the reminder
+          default: "18:00:00"
+          selector:
+            time: {}
+        reminder_only_increase:
+          name: Remind only if prices go up
+          description: No reminder when none of the selected prices goes up. Off, any change is enough.
           default: true
           selector:
             boolean: {}
@@ -188,6 +217,10 @@ triggers:
       - unknown
       - unavailable
     enabled: !input notify_new_order
+  - trigger: time
+    id: reminder
+    at: !input reminder_time
+    enabled: !input notify_reminder
   - trigger: state
     id: in_force
     entity_id: !input valid_from_entity
@@ -207,6 +240,8 @@ variables:
   language: !input language
   fuels: !input fuels
   skip_unchanged: !input skip_unchanged
+  reminder_days: !input reminder_days
+  reminder_only_increase: !input reminder_only_increase
   notify_devices: !input notify_devices
   current_entities:
     petrol_95: !input petrol_95_entity
@@ -231,6 +266,7 @@ variables:
       unchanged: unchanged
       new_title: New fuel prices
       new_intro: "From {date}:"
+      reminder_title: Fill up before prices change
       in_force_title: New fuel prices in force
       in_force_intro: "Since {date}:"
       problem_title: Fuel prices may be out of date
@@ -245,6 +281,7 @@ variables:
       unchanged: sem alteração
       new_title: Novos preços dos combustíveis
       new_intro: "A partir de {date}:"
+      reminder_title: Abasteça antes da mudança de preços
       in_force_title: Novos preços em vigor
       in_force_intro: "Desde {date}:"
       problem_title: Os preços podem estar desatualizados
@@ -255,12 +292,14 @@ actions:
       t: "{{ text[language] if language in text else text['en'] }}"
       kind: >-
         {{ 'problem' if trigger.id == 'daily' else trigger.id }}
-      # The new order is compared with the prices in force; the "in force"
-      # message lists the prices in force, without a comparison.
+      # The new order (and the reminder of it) is compared with the prices in
+      # force; the "in force" message lists the prices in force, without a
+      # comparison.
+      about_next: "{{ kind in ['new_order', 'reminder'] }}"
       price_entities: >-
-        {{ next_entities if kind == 'new_order' else current_entities }}
+        {{ next_entities if about_next else current_entities }}
       date_str: >-
-        {{ states(next_valid_from_entity) if kind == 'new_order' else states(valid_from_entity) }}
+        {{ states(next_valid_from_entity) if about_next else states(valid_from_entity) }}
       date_text: >-
         {% set d = strptime(date_str, '%Y-%m-%d', none) %}
         {% if d is none %}{{ date_str }}{% else %}{{ t.days[d.weekday()] }} {{ d.day }} {{ t.months[d.month - 1] }}{% endif %}
@@ -271,7 +310,7 @@ actions:
           {% set old = states(current_entities[f]) %}
           {% if is_number(new) %}
             {% set line = t.fuels[f] ~ ': ' ~ '%.3f' | format(new | float) ~ ' €/L' %}
-            {% if kind == 'new_order' and is_number(old) %}
+            {% if about_next and is_number(old) %}
               {% set diff = ((new | float - old | float) * 100) | round(1) %}
               {% if diff == 0 %}
                 {% set line = line ~ ' (' ~ t.unchanged ~ ')' %}
@@ -293,6 +332,19 @@ actions:
           {% endif %}
         {% endfor %}
         {{ ns.any }}
+      increased: >-
+        {% set ns = namespace(any=false) %}
+        {% for f in fuels %}
+          {% set new = states(next_entities[f]) %}
+          {% set old = states(current_entities[f]) %}
+          {% if is_number(new) and is_number(old) and (new | float) > (old | float) %}
+            {% set ns.any = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.any }}
+      days_to_next: >-
+        {% set d = strptime(states(next_valid_from_entity), '%Y-%m-%d', none) %}
+        {{ (d.date() - now().date()).days if d is not none else -1 }}
       warning_messages: "{{ state_attr(warnings_entity, 'messages') or [] }}"
       stale_days: >-
         {% set u = as_datetime(states(data_updated_entity)) %}
@@ -301,11 +353,13 @@ actions:
       # start-up) is not a new order; skip it so a restart sends nothing.
       send: >-
         {% if kind == 'new_order' %}{{ trigger.from_state is not none and lines | count > 0 and (changed or not skip_unchanged) }}
+        {% elif kind == 'reminder' %}{{ days_to_next == reminder_days | int and lines | count > 0 and (increased if reminder_only_increase else changed) }}
         {% elif kind == 'in_force' %}{{ trigger.from_state is not none and lines | count > 0 }}
         {% elif kind == 'problem' %}{{ warning_messages | count > 0 or stale_days > 8 }}
         {% else %}false{% endif %}
       title: >-
         {% if kind == 'new_order' %}{{ t.new_title }}
+        {% elif kind == 'reminder' %}{{ t.reminder_title }}
         {% elif kind == 'in_force' %}{{ t.in_force_title }}
         {% else %}{{ t.problem_title }}{% endif %}
       message: >-
@@ -314,7 +368,7 @@ actions:
           {%- if stale_days > 8 -%}{%- set parts = parts + [t.stale | replace('{days}', stale_days | string)] -%}{%- endif -%}
           {{ parts | join('\n') }}
         {%- else -%}
-          {%- set intro = t.new_intro if kind == 'new_order' else t.in_force_intro -%}
+          {%- set intro = t.new_intro if about_next else t.in_force_intro -%}
           {{ intro | replace('{date}', date_text) ~ '\n' ~ lines | join('\n') }}
         {%- endif -%}
   - condition: template

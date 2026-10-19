@@ -89,7 +89,9 @@ Then create an automation from it and choose:
 - **Language**: English or Português.
 - **Fuels**: petrol 95, diesel, coloured diesel.
 - **What to notify**: a new order is published (on by default; weeks with unchanged prices are skipped), the new
-  prices take effect on Monday at 0:00 (off by default), and a daily check for data problems (a warning from the
+  prices take effect on Monday at 0:00 (off by default), a reminder to fill up before the change (off by
+  default; you choose how many days before and at what time, e.g. Sunday at 18:00, and by default it is sent
+  only when a selected price goes up), and a daily check for data problems (a warning from the
   feed, or no update for more than 8 days; on by default, at 09:00).
 
 The entity fields are pre-filled with the integration's standard entity ids; change them only if you renamed the
