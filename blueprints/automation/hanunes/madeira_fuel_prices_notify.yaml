@@ -1,0 +1,330 @@
+blueprint:
+  name: "Madeira fuel prices: notify"
+  description: >-
+    Sends a notification when a new weekly order of maximum fuel prices is
+    published in JORAM (usually on Friday or Saturday), optionally when the new
+    prices take effect (Monday at 0:00), and once a day while the price data has
+    a problem (a warning from the feed, or no update for more than 8 days).
+
+
+    Messages show each selected fuel's price and its change against the prices
+    in force, in English or Portuguese. Needs the Madeira Fuel Prices
+    integration.
+  domain: automation
+  author: hanunes
+  source_url: https://github.com/hanunes/ha-madeira-fuel-prices/blob/main/blueprints/automation/hanunes/madeira_fuel_prices_notify.yaml
+  homeassistant:
+    min_version: "2025.1.0"
+  input:
+    delivery:
+      name: Where to send
+      icon: mdi:cellphone-message
+      input:
+        notify_devices:
+          name: Phones
+          description: >-
+            Phones with the Home Assistant Companion app. The message goes to
+            each phone's notify action (notify.mobile_app_<device name>).
+          default: []
+          selector:
+            device:
+              integration: mobile_app
+              multiple: true
+        custom_actions:
+          name: Other actions (optional)
+          description: >-
+            Extra actions to run with each notification, for example Telegram or
+            a speaker. The variables title and message hold the text, e.g.
+            message: "{{ message }}".
+          default: []
+          selector:
+            action: {}
+        language:
+          name: Language
+          default: en
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: English
+                  value: en
+                - label: Português
+                  value: pt
+    what:
+      name: What to notify
+      icon: mdi:gas-station
+      input:
+        fuels:
+          name: Fuels
+          default:
+            - petrol_95
+            - diesel
+          selector:
+            select:
+              multiple: true
+              options:
+                - label: Petrol 95
+                  value: petrol_95
+                - label: Diesel
+                  value: diesel
+                - label: Coloured diesel
+                  value: coloured_diesel
+        notify_new_order:
+          name: New order published
+          description: When next week's prices become known.
+          default: true
+          selector:
+            boolean: {}
+        skip_unchanged:
+          name: Skip unchanged weeks
+          description: No message for a new order whose selected prices are all unchanged.
+          default: true
+          selector:
+            boolean: {}
+        notify_in_force:
+          name: New prices in force
+          description: When the new prices take effect (Monday at 0:00, so a night-time message).
+          default: false
+          selector:
+            boolean: {}
+        notify_problems:
+          name: Data problems
+          description: Once a day while the feed reports a warning or has not changed for more than 8 days.
+          default: true
+          selector:
+            boolean: {}
+        check_time:
+          name: Time of the daily problem check
+          default: "09:00:00"
+          selector:
+            time: {}
+    entities:
+      name: Entities
+      icon: mdi:format-list-bulleted
+      description: Pre-filled with the integration's standard entity ids. Change them only if you renamed the entities.
+      collapsed: true
+      input:
+        petrol_95_entity:
+          name: Petrol 95 (in force)
+          default: sensor.madeira_fuel_prices_petrol_95
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        diesel_entity:
+          name: Diesel (in force)
+          default: sensor.madeira_fuel_prices_diesel
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        coloured_diesel_entity:
+          name: Coloured diesel (in force)
+          default: sensor.madeira_fuel_prices_coloured_diesel
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        next_petrol_95_entity:
+          name: Petrol 95 (next)
+          default: sensor.madeira_fuel_prices_next_petrol_95
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        next_diesel_entity:
+          name: Diesel (next)
+          default: sensor.madeira_fuel_prices_next_diesel
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        next_coloured_diesel_entity:
+          name: Coloured diesel (next)
+          default: sensor.madeira_fuel_prices_next_coloured_diesel
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        valid_from_entity:
+          name: Valid from
+          default: sensor.madeira_fuel_prices_valid_from
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        next_valid_from_entity:
+          name: Next valid from
+          default: sensor.madeira_fuel_prices_next_valid_from
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        warnings_entity:
+          name: Warnings
+          default: sensor.madeira_fuel_prices_warnings
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+        data_updated_entity:
+          name: Data updated
+          default: sensor.madeira_fuel_prices_data_updated
+          selector:
+            entity:
+              integration: madeira_fuel_prices
+              domain: sensor
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: state
+    id: new_order
+    entity_id: !input next_valid_from_entity
+    not_from:
+      - unavailable
+    not_to:
+      - unknown
+      - unavailable
+    enabled: !input notify_new_order
+  - trigger: state
+    id: in_force
+    entity_id: !input valid_from_entity
+    not_from:
+      - unknown
+      - unavailable
+    not_to:
+      - unknown
+      - unavailable
+    enabled: !input notify_in_force
+  - trigger: time
+    id: daily
+    at: !input check_time
+    enabled: !input notify_problems
+
+variables:
+  language: !input language
+  fuels: !input fuels
+  skip_unchanged: !input skip_unchanged
+  notify_devices: !input notify_devices
+  current_entities:
+    petrol_95: !input petrol_95_entity
+    diesel: !input diesel_entity
+    coloured_diesel: !input coloured_diesel_entity
+  next_entities:
+    petrol_95: !input next_petrol_95_entity
+    diesel: !input next_diesel_entity
+    coloured_diesel: !input next_coloured_diesel_entity
+  valid_from_entity: !input valid_from_entity
+  next_valid_from_entity: !input next_valid_from_entity
+  warnings_entity: !input warnings_entity
+  data_updated_entity: !input data_updated_entity
+  text:
+    en:
+      fuels:
+        petrol_95: Petrol 95
+        diesel: Diesel
+        coloured_diesel: Coloured diesel
+      days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      months: [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+      unchanged: unchanged
+      new_title: New fuel prices
+      new_intro: "From {date}:"
+      in_force_title: New fuel prices in force
+      in_force_intro: "Since {date}:"
+      problem_title: Fuel prices may be out of date
+      stale: "The price data has not changed for {days} days."
+    pt:
+      fuels:
+        petrol_95: Gasolina 95
+        diesel: Gasóleo
+        coloured_diesel: Gasóleo colorido
+      days: [seg, ter, qua, qui, sex, sáb, dom]
+      months: [jan, fev, mar, abr, mai, jun, jul, ago, set, out, nov, dez]
+      unchanged: sem alteração
+      new_title: Novos preços dos combustíveis
+      new_intro: "A partir de {date}:"
+      in_force_title: Novos preços em vigor
+      in_force_intro: "Desde {date}:"
+      problem_title: Os preços podem estar desatualizados
+      stale: "Os dados dos preços não mudam há {days} dias."
+
+actions:
+  - variables:
+      t: "{{ text[language] if language in text else text['en'] }}"
+      kind: >-
+        {{ 'problem' if trigger.id == 'daily' else trigger.id }}
+      # The new order is compared with the prices in force; the "in force"
+      # message lists the prices in force, without a comparison.
+      price_entities: >-
+        {{ next_entities if kind == 'new_order' else current_entities }}
+      date_str: >-
+        {{ states(next_valid_from_entity) if kind == 'new_order' else states(valid_from_entity) }}
+      date_text: >-
+        {% set d = strptime(date_str, '%Y-%m-%d', none) %}
+        {% if d is none %}{{ date_str }}{% else %}{{ t.days[d.weekday()] }} {{ d.day }} {{ t.months[d.month - 1] }}{% endif %}
+      lines: >-
+        {% set ns = namespace(out=[]) %}
+        {% for f in fuels %}
+          {% set new = states(price_entities[f]) %}
+          {% set old = states(current_entities[f]) %}
+          {% if is_number(new) %}
+            {% set line = t.fuels[f] ~ ': ' ~ '%.3f' | format(new | float) ~ ' €/L' %}
+            {% if kind == 'new_order' and is_number(old) %}
+              {% set diff = ((new | float - old | float) * 100) | round(1) %}
+              {% if diff == 0 %}
+                {% set line = line ~ ' (' ~ t.unchanged ~ ')' %}
+              {% else %}
+                {% set line = line ~ ' (' ~ ('+' if diff > 0 else '−') ~ '%.1f' | format(diff | abs) ~ ' c)' %}
+              {% endif %}
+            {% endif %}
+            {% set ns.out = ns.out + [line] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.out }}
+      changed: >-
+        {% set ns = namespace(any=false) %}
+        {% for f in fuels %}
+          {% set new = states(next_entities[f]) %}
+          {% set old = states(current_entities[f]) %}
+          {% if is_number(new) and is_number(old) and (new | float) != (old | float) %}
+            {% set ns.any = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.any }}
+      warning_messages: "{{ state_attr(warnings_entity, 'messages') or [] }}"
+      stale_days: >-
+        {% set u = as_datetime(states(data_updated_entity)) %}
+        {{ ((now() - u).days) if u is not none else -1 }}
+      # A state trigger with no previous state (the entity being created at
+      # start-up) is not a new order; skip it so a restart sends nothing.
+      send: >-
+        {% if kind == 'new_order' %}{{ trigger.from_state is not none and lines | count > 0 and (changed or not skip_unchanged) }}
+        {% elif kind == 'in_force' %}{{ trigger.from_state is not none and lines | count > 0 }}
+        {% elif kind == 'problem' %}{{ warning_messages | count > 0 or stale_days > 8 }}
+        {% else %}false{% endif %}
+      title: >-
+        {% if kind == 'new_order' %}{{ t.new_title }}
+        {% elif kind == 'in_force' %}{{ t.in_force_title }}
+        {% else %}{{ t.problem_title }}{% endif %}
+      message: >-
+        {%- if kind == 'problem' -%}
+          {%- set parts = warning_messages | list -%}
+          {%- if stale_days > 8 -%}{%- set parts = parts + [t.stale | replace('{days}', stale_days | string)] -%}{%- endif -%}
+          {{ parts | join('\n') }}
+        {%- else -%}
+          {%- set intro = t.new_intro if kind == 'new_order' else t.in_force_intro -%}
+          {{ intro | replace('{date}', date_text) ~ '\n' ~ lines | join('\n') }}
+        {%- endif -%}
+  - condition: template
+    value_template: "{{ send }}"
+  - repeat:
+      for_each: "{{ notify_devices }}"
+      sequence:
+        - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+          continue_on_error: true
+          data:
+            title: "{{ title }}"
+            message: "{{ message }}"
+  - sequence: !input custom_actions

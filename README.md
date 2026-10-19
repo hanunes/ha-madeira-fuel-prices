@@ -66,6 +66,35 @@ notify when `data_updated` is more than 8 days old or `warnings` is above 0. The
 
 There is nothing to set. Only a single instance of the integration is supported.
 
+## Notifications (blueprint)
+
+An optional automation blueprint sends a notification when next week's prices are published, with each price
+and its change against the prices in force:
+
+```
+New fuel prices
+From Mon 19 Oct:
+Petrol 95: 2.035 €/L (+3.2 c)
+Diesel: 2.085 €/L (−0.6 c)
+```
+
+[![Import the blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fhanunes%2Fha-madeira-fuel-prices%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fhanunes%2Fmadeira_fuel_prices_notify.yaml)
+
+Or import it by hand: **Settings → Automations & Scenes → Blueprints → Import Blueprint**, with the URL
+`https://github.com/hanunes/ha-madeira-fuel-prices/blob/main/blueprints/automation/hanunes/madeira_fuel_prices_notify.yaml`.
+Then create an automation from it and choose:
+
+- **Phones** that get the message (Home Assistant Companion app), and optionally **other actions** (Telegram, a
+  speaker, …), which can use the `title` and `message` variables.
+- **Language**: English or Português.
+- **Fuels**: petrol 95, diesel, coloured diesel.
+- **What to notify**: a new order is published (on by default; weeks with unchanged prices are skipped), the new
+  prices take effect on Monday at 0:00 (off by default), and a daily check for data problems (a warning from the
+  feed, or no update for more than 8 days; on by default, at 09:00).
+
+The entity fields are pre-filled with the integration's standard entity ids; change them only if you renamed the
+entities.
+
 ## How it works
 
 - Once an hour the integration fetches one small file,
